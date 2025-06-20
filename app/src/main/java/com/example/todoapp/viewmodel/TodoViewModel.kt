@@ -51,7 +51,7 @@ class TodoViewModel:ViewModel() {
             }
         }
     }
-    private fun getTodoById(id: Int) {
+    fun getTodoById(id: Int) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val todo = todoRepository.getTodoById(id)
@@ -60,7 +60,8 @@ class TodoViewModel:ViewModel() {
             catch (
                 e:Exception
             ) {
-                Log.e("API TODO", "Get todo by ID fail: ${e.localizedMessage}", e)
+                Log.e("API TODO", "Get todo by ID: ${id} fail: ${e.localizedMessage}", e)
+                Log.e("API TODO", "Get todo by ID: ${_selectedTodo} fail: ${e.localizedMessage}", e)
             }
         }
     }
@@ -69,6 +70,7 @@ class TodoViewModel:ViewModel() {
             try {
                 val createTodo = todoRepository.createTodo(todo)
                 _todoList.value += createTodo
+                Log.d("API TODO", "Create todo fail: ${createTodo}",)
             }
             catch (
                 e:Exception

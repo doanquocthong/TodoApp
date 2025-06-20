@@ -71,7 +71,7 @@ fun TodoApp(navController: NavController ,todoViewModel: TodoViewModel) {
         Scaffold (
             topBar = {
                 CenterAlignedTopAppBar(
-                    title = { Text("TODO APP", fontSize = 30.sp, fontWeight = FontWeight.Bold)},
+                    title = { Text("DANH SÁCH", fontSize = 30.sp, fontWeight = FontWeight.Bold)},
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = colorResource(R.color.main),
                         titleContentColor = Color.White
@@ -104,7 +104,7 @@ fun TodoApp(navController: NavController ,todoViewModel: TodoViewModel) {
         Scaffold (
             topBar = {
                 CenterAlignedTopAppBar(
-                    title = { Text("TODO APP", fontSize = 30.sp, fontWeight = FontWeight.Bold)},
+                    title = { Text("DANH SÁCH", fontSize = 30.sp, fontWeight = FontWeight.Bold)},
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = colorResource(R.color.main),
                         titleContentColor = Color.White
@@ -137,7 +137,8 @@ fun TodoApp(navController: NavController ,todoViewModel: TodoViewModel) {
                 items(todo.value.size) { todoItem ->
                     TodoItem(
                         todo.value[todoItem],
-                        todoViewModel
+                        todoViewModel,
+                        navController
                     )
                 }
             }
@@ -145,130 +146,11 @@ fun TodoApp(navController: NavController ,todoViewModel: TodoViewModel) {
     }
 }
 
-
-@Composable
-fun dialogTodo(
-    onDismiss: () -> Unit,
-    todoViewModel: TodoViewModel)
-{
-    var title by remember { mutableStateOf<String>("")}
-    var description by remember {  mutableStateOf<String>("")}
-    var completed by remember { mutableStateOf(false) }
-
-    val context = LocalContext.current
-    Dialog(
-        onDismissRequest = {
-
-        }
-    ) {
-        Surface (
-            shape = RoundedCornerShape(16.dp),
-            color = Color.White,
-            modifier = Modifier
-                .width(500.dp)
-        ) {
-            Column (
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ){
-                Text(
-                    "Thêm công việc",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Spacer(
-                    modifier = Modifier.height(20.dp)
-                )
-                OutlinedTextField(
-                    label = { Text("Tiêu đề")},
-                    value = title,
-                    onValueChange = {title = it},
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp)
-                )
-                Spacer(
-                    modifier = Modifier.height(10.dp)
-                )
-                OutlinedTextField(
-                    label = { Text("Mô tả")},
-                    value = description,
-                    onValueChange = {description = it},
-                    placeholder = { Text("Tiêu đề")},
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp)
-                )
-                Spacer(
-                    modifier = Modifier.height(30.dp)
-                )
-                Row (
-                    modifier = Modifier
-                        .fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceAround
-                ) {
-                    OutlinedButton(
-                        onClick = {
-                            //Clear data
-                            title = ""
-                            description = ""
-                            onDismiss()
-                        },
-                        modifier = Modifier,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.Red
-                        )
-                    ) {
-                        Text(
-                            "Hủy",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
-                            modifier = Modifier.padding(5.dp)
-                        )
-                    }
-                    OutlinedButton(
-                        onClick = {
-                            if((title == "") || (description == "")) {
-                                Toast.makeText(context, "Đùa à? Không được để cái nào trống bạn ơi", Toast.LENGTH_SHORT).show()
-                            }
-                            else {
-                                val newTodo = Todo(
-                                    title = title,
-                                    description = description,
-                                    completed = completed,
-                                )
-                                todoViewModel.createTodo(newTodo)
-
-                                //Clear data
-                                title = ""
-                                description = ""
-                                onDismiss()
-                            }
-                        },
-                        modifier = Modifier,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = colorResource(R.color.main)
-                        )
-                    ) {
-                        Text(
-                            "Thêm",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
-                            modifier = Modifier.padding(5.dp)
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
 @Composable
 fun TodoItem(
     todo: Todo,
-    todoViewModel: TodoViewModel
+    todoViewModel: TodoViewModel,
+    navController: NavController
 ) {
     var checked by remember { mutableStateOf(todo.completed) }
 
@@ -290,7 +172,12 @@ fun TodoItem(
 
     Surface(
         border = BorderStroke(1.dp, color = Color.Gray),
-        modifier = Modifier.padding(start = 10.dp, end = 10.dp, top = 30.dp),
+        modifier = Modifier
+            .padding(start = 10.dp, end = 10.dp, top = 30.dp)
+            .clickable {
+                navController.navigate("detail/${todo.id}")
+            }
+        ,
         shape = RoundedCornerShape(16.dp),
         color = colorResource(R.color.background)
     ) {
@@ -349,26 +236,9 @@ fun TodoItem(
                         fontWeight = FontWeight.Bold
                     )
                 }
-                descriptionShort?.let {
-                    Text(
-                        it,
-                        fontSize = 20.sp,
-                    )
-                }
-            }
-            ElevatedButton(
-                onClick = {
-
-                },
-                shape = CircleShape,
-                modifier = Modifier.size(48.dp),
-                contentPadding = PaddingValues(0.dp)
-            ) {
-                Image(
-                    painter = painterResource(R.drawable.pen),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(30.dp),
+                Text(
+                    descriptionShort,
+                    fontSize = 20.sp,
                 )
             }
 

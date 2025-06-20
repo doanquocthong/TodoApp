@@ -2,7 +2,6 @@ package com.example.todoapp.uiapp
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.app.AlertDialog
 import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -21,27 +20,23 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
@@ -54,7 +49,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextFieldColors
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -77,23 +72,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.cloudinary.android.MediaManager
-import com.cloudinary.android.callback.ErrorInfo
 import com.example.todoapp.R
-import com.example.todoapp.model.ContentItem
 import com.example.todoapp.model.Todo
-import com.example.todoapp.viewmodel.EditorViewModel
 import com.example.todoapp.viewmodel.TodoViewModel
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
-fun AddTodo(navController: NavController, todoViewModel: TodoViewModel, editorViewModel: EditorViewModel) {
+fun AddTodo(navController: NavController, todoViewModel: TodoViewModel) {
 
     var title by remember { mutableStateOf(TextFieldValue("")) }
     var description by remember { mutableStateOf(TextFieldValue("")) }
@@ -103,61 +93,96 @@ fun AddTodo(navController: NavController, todoViewModel: TodoViewModel, editorVi
     //Chứa uri ảnh được chọn
     var imageUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
 //   Mở thư viện chọn ảnh (GetMultipleContents)
-    val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
-        imageUris = imageUris + uris
-        Log.d("AddRoomScreen", "Đã chọn ảnh: $uris")
-    }
+    val galleryLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
+            imageUris = imageUris + uris
+            Log.d("AddRoomScreen", "Đã chọn ảnh: $uris")
+        }
     //Yêu cầu quyền truy cập
-    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-        if (isGranted) galleryLauncher.launch("image/*")
-        else Toast.makeText(context, "Quyền truy cập bị từ chối", Toast.LENGTH_SHORT).show()
-    }
+    val permissionLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+            if (isGranted) galleryLauncher.launch("image/*")
+            else Toast.makeText(context, "Quyền truy cập bị từ chối", Toast.LENGTH_SHORT).show()
+        }
     // Mở camera và nhận ảnh chụp
     val cameraImageUri = remember { mutableStateOf<Uri?>(null) }
-    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
-        cameraImageUri.value?.let { uri ->
-            if (success) {
-                imageUris = imageUris + uri
-                Log.d("AddRoomScreen", "Đã chụp ảnh: $uri")
-            }
-        }
-    }
-
-    val openOptionDialog: () -> Unit = {
-        AlertDialog.Builder(context)
-            .setTitle("Chọn ảnh")
-            .setItems(arrayOf("Chụp ảnh", "Chọn từ thư viện")) { _, which ->
-                if (which == 0) {
-                    // Chụp ảnh
-                    val uri = FileProvider.getUriForFile(
-                        context,
-                        "${context.packageName}.provider", // Khai báo provider trong manifest
-                        File(context.cacheDir, "camera_image_${System.currentTimeMillis()}.jpg")
-                    )
-                    cameraImageUri.value = uri
-                    cameraLauncher.launch(uri)
-                } else {
-                    // Mở thư viện
-                    val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
-                        Manifest.permission.READ_MEDIA_IMAGES
-                    else
-                        Manifest.permission.READ_EXTERNAL_STORAGE
-
-                    if (ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED) {
-                        galleryLauncher.launch("image/*")
-                    } else {
-                        permissionLauncher.launch(permission)
-                    }
+    val cameraLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+            cameraImageUri.value?.let { uri ->
+                if (success) {
+                    imageUris = imageUris + uri
+                    Log.d("AddRoomScreen", "Đã chụp ảnh: $uri")
                 }
             }
-            .show()
-    }
+        }
 
+    var showDialog by remember { mutableStateOf(false) }
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text("Chọn ảnh") },
+            text = {
+                Column {
+                    Text(
+                        text = "📷 Chụp ảnh",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                val uri = FileProvider.getUriForFile(
+                                    context,
+                                    "${context.packageName}.provider",
+                                    File(
+                                        context.cacheDir,
+                                        "camera_image_${System.currentTimeMillis()}.jpg"
+                                    )
+                                )
+                                cameraImageUri.value = uri
+                                showDialog = false
+                                cameraLauncher.launch(uri)
+                            }
+                            .padding(8.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "🖼 Chọn từ thư viện",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                val permission =
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+                                        Manifest.permission.READ_MEDIA_IMAGES
+                                    else
+                                        Manifest.permission.READ_EXTERNAL_STORAGE
+
+                                if (ContextCompat.checkSelfPermission(context, permission)
+                                    == PackageManager.PERMISSION_GRANTED
+                                ) {
+                                    showDialog = false
+                                    galleryLauncher.launch("image/*")
+                                } else {
+                                    showDialog = false
+                                    permissionLauncher.launch(permission)
+                                }
+                            }
+                            .padding(8.dp)
+                    )
+                }
+            },
+            confirmButton = {
+
+            },
+            dismissButton = {
+                TextButton(onClick = { showDialog = false }) {
+                    Text("Hủy")
+                }
+            }
+        )
+    }
 
     Scaffold (
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("ADD TODO", fontSize = 30.sp, fontWeight = FontWeight.Bold) },
+                title = { Text("THÊM", fontSize = 30.sp, fontWeight = FontWeight.Bold) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = colorResource(R.color.main),
                     titleContentColor = Color.White
@@ -192,16 +217,13 @@ fun AddTodo(navController: NavController, todoViewModel: TodoViewModel, editorVi
             item{
                 TextFieldContainer(
                     title = title,
-                    onTitleChange = { title = it },
+                    onTitleChange = {title = it},
                     description = description,
-                    onDescriptionChange = { description = it },
-                    onAddImageClick = openOptionDialog,
+                    onDescriptionChange = {description = it},
+                    onAddImageClick = { showDialog = true },
                     imageUris = imageUris,
                     context = context,
-                    onRemoveImage = { uri ->
-                        imageUris = imageUris - uri
-                    },
-                    editorViewModel = editorViewModel
+                    onRemoveImage = {imageUris -= it},
                 )
             }
             item{
@@ -209,18 +231,16 @@ fun AddTodo(navController: NavController, todoViewModel: TodoViewModel, editorVi
                     Modifier.height(20.dp)
                 )
             }
-
             val todo = Todo(
                 title = title.text,
-                description = description.text,
+                description = description.text
             )
             item{
                 ButtonAddTodo(
-                    imageUris = TODO(),
-                    navController = TODO(),
-                    todoViewModel = TODO(),
-                    todo = TODO(),
-                    context = TODO()
+                    imageUris = imageUris,
+                    navController = navController,
+                    todoViewModel = todoViewModel,
+                    todo = todo,
                 )
             }
 
@@ -231,21 +251,16 @@ fun AddTodo(navController: NavController, todoViewModel: TodoViewModel, editorVi
 
 @Composable
 fun TextFieldContainer(
+    context: Context,
     title: TextFieldValue,
     onTitleChange: (TextFieldValue) -> Unit,
-    description: List<ContentItem>,
+    description: TextFieldValue,
     onDescriptionChange: (TextFieldValue) -> Unit,
     onAddImageClick: () -> Unit,
     imageUris: List<Uri>,
-    context: Context,
     onRemoveImage: (Uri) -> Unit,
-    editorViewModel: EditorViewModel
 ) {
     var selectedImage by remember { mutableStateOf<Uri?>(null) }
-
-    //To write texts or add images
-    val items = editorViewModel.contentItems
-    var isWriting by remember { mutableStateOf(true)}
 
     Surface(
         border = BorderStroke(1.dp, Color.Gray),
@@ -263,7 +278,10 @@ fun TextFieldContainer(
             )
             OutlinedTextField(
                 value = title,
-                onValueChange = {onTitleChange(it)},
+                onValueChange = {
+                    //title = it
+                    onTitleChange(it)
+                                },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -297,96 +315,72 @@ fun TextFieldContainer(
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold
             )
-//            OutlinedTextField(
-//                value = description,
-//                onValueChange = {onDescriptionChange(it)},
-//                modifier = Modifier,
-//                shape = RoundedCornerShape(16.dp),
-//                colors = OutlinedTextFieldDefaults.colors(
-//                    focusedContainerColor = Color.White,
-//                    unfocusedContainerColor = Color.White,
-//                    focusedBorderColor = Color.White,
-//                    unfocusedBorderColor = Color.White,
-//                ),
-//                textStyle = TextStyle(
-//                    fontSize = 18.sp
-//                )
-//            )
-//            LazyVerticalGrid(
-//                columns = GridCells.Fixed(3),
-//                modifier = Modifier
-//                    .height(300.dp),
-//                contentPadding = PaddingValues(0.dp),
-//                verticalArrangement = Arrangement.spacedBy(10.dp,),
-//                horizontalArrangement = Arrangement.spacedBy(10.dp)
-//            ) {
-//                items(imageUris) { uri ->
-//                    Box(
-//                        modifier = Modifier
-//                            .size(100.dp)
-//                            .clip(RoundedCornerShape(16.dp))
-//                            .clickable { selectedImage = if (selectedImage == uri) null else uri },
-//                        contentAlignment = Alignment.Center,
-//                    ){
-//                        AsyncImage(
-//                            model =ImageRequest.Builder(context).data(uri).crossfade(true).build(),
-//                            contentDescription = null,
-//                            modifier = Modifier.fillMaxSize(),
-//                            contentScale = ContentScale.Crop
-//                        )
-//                        if (selectedImage == uri) {
-//                            Box(
-//                                modifier = Modifier
-//                                    .fillMaxSize()
-//                                    .background(Color.Black.copy(alpha = 0.4f)),
-//                                contentAlignment = Alignment.Center
-//                            ) {
-//                                IconButton(
-//                                    onClick = {
-//                                        onRemoveImage(uri)
-//                                        selectedImage = null
-//                                    },
-//                                    modifier = Modifier
-//                                        .size(32.dp)
-//                                        .background(Color.White, CircleShape)
-//                                ) {
-//                                    Icon(
-//                                        imageVector = Icons.Default.Delete,
-//                                        contentDescription = "Delete",
-//                                        tint = colorResource(R.color.main)
-//                                    )
-//                                }
-//                            }
-//                        }
-//                    }
-//
-//                }
-//            }
-            LazyColumn {
-                itemsIndexed(items) { index, item ->
-                    when (item) {
-                        is ContentItem.TextItem -> {
-                            OutlinedTextField(
-                                value = item.text,
-                                onValueChange = { editorViewModel.updateText(index, it) },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                        is ContentItem.ImageItem -> {
-                            AsyncImage(
-                                model = item.uri,
-                                contentDescription = null,
+            OutlinedTextField(
+                value = description,
+                onValueChange = {
+                    onDescriptionChange(it)
+                },
+                modifier = Modifier,
+                shape = RoundedCornerShape(16.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White,
+                    focusedBorderColor = Color.White,
+                    unfocusedBorderColor = Color.White,
+                ),
+                textStyle = TextStyle(
+                    fontSize = 18.sp
+                )
+            )
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(3),
+                modifier = Modifier
+                    .height(300.dp),
+                contentPadding = PaddingValues(0.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp,),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                items(imageUris) { uri ->
+                    Box(
+                        modifier = Modifier
+                            .size(100.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .clickable { selectedImage = if (selectedImage == uri) null else uri },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(context).data(uri).crossfade(true).build(),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                        if (selectedImage == uri) {
+                            Box(
                                 modifier = Modifier
-                                    .height(200.dp)
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(16.dp))
-                            )
+                                    .fillMaxSize()
+                                    .background(Color.Black.copy(alpha = 0.4f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                IconButton(
+                                    onClick = {
+                                        onRemoveImage(uri)
+                                        selectedImage = null
+                                    },
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .background(Color.White, CircleShape)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Delete",
+                                        tint = colorResource(R.color.main)
+                                    )
+                                }
+                            }
                         }
                     }
                 }
-
             }
-
             Row(
                 modifier = Modifier
                     .fillMaxWidth(),
@@ -414,35 +408,67 @@ fun TextFieldContainer(
 }
 
 @Composable
-fun ButtonAddTodo(imageUris: List<Uri> ,navController: NavController ,todoViewModel: TodoViewModel, todo: Todo, context: Context) {
+fun ButtonAddTodo(
+    imageUris: List<Uri> ,
+    navController: NavController ,
+    todoViewModel: TodoViewModel,
+    todo: Todo,
+) {
+    val context = LocalContext.current
+    var isLoading by remember { mutableStateOf(true) }
     OutlinedButton(
+        enabled = isLoading,
         modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = 30.dp),
         onClick = {
-            todoViewModel.uploadImagesToCloudinary(
-                context = context,
-                imageUris = imageUris,
-                onComplete = { imageUrls ->
+            isLoading = false
+            if (todo.title.isNullOrBlank() || todo.description.isNullOrBlank()) {
+                Toast.makeText(context, "Sao không điền cho hết z bà nội", Toast.LENGTH_SHORT).show()
+            }
+
+            else {
+                todoViewModel.uploadImagesToCloudinary(
+                    context = context,
+                    imageUris = imageUris,
+                    onComplete = { imageUrls ->
                         if (imageUrls.isEmpty()) {
-                            Toast.makeText(context, "Không có ảnh nào được tải lên", Toast.LENGTH_SHORT).show()
                             return@uploadImagesToCloudinary
                         }
+                        todo.urlImages = imageUrls
                         todoViewModel.createTodo(todo)
-                }
-            )
-            todoViewModel.createTodo(todo)
-            navController.navigate("home")
+                        navController.navigate("home")
+                        isLoading = true
+                    }
+                )
+
+
+                // Sau đó mới gọi lưu
+            }
+            isLoading = true
+
+
         },
         colors = ButtonDefaults.buttonColors(
             containerColor = colorResource(R.color.main)
         )
     ) {
-        Text(
-            "Thêm công việc",
-            fontSize = 20.sp,
-            modifier = Modifier.padding(5.dp)
-        )
+        if (
+            isLoading
+        ) {
+            Text(
+                "Thêm luôn",
+                fontSize = 20.sp,
+                modifier = Modifier.padding(5.dp)
+            )
+        }
+        else {
+            CircularProgressIndicator(
+                color = Color.White,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+
     }
 }
 
